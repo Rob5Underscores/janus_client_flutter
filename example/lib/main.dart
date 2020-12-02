@@ -16,23 +16,18 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
 
-    JanusClient clientFlutter = new HTTPJanusClient('https://janus.rob5underscores.co.uk/api/');
+    JanusClient clientFlutter = new HTTPJanusClient(
+        'https://janus.rob5underscores.co.uk/api/');
 
-/*    clientFlutter.connect().then((connected) {
-      if(connected) {
-        print('connected');
-      } else {
-        print('not connected');
-      }
-    });*/
-
-    clientFlutter.createSession().then((sess) => {
-      if(sess != null) {
-        print('created session - back to main')
-      } else {
-        print(':(')
-    }
-    });
+    clientFlutter.connect().then((_) => {
+          print('connected on main'),
+          clientFlutter.createSession().then((sess) => {
+                if (sess != null)
+                  {print('created session on main')}
+                else
+                  {print(':(')}
+              })
+        });
   }
 
 

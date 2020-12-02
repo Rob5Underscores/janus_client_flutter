@@ -16,6 +16,8 @@ class Session {
   int keepAliveInterval = 30000, keepAliveFails = 2, keepAliveFailCount = 0;
   SessionState sessionState;
 
+  Function onEvent;
+
   Session({this.id, this.janus}) {
     this.sessionState = this.janus.isConnected() ? SessionState.alive : SessionState.dead;
     this.startKeepAlive();
@@ -75,6 +77,14 @@ class Session {
         }
       })
     });
+  }
+
+  event(event) {
+    // if(this.videoRoomPlugin.hasHandle(event.sender)){
+    //   this.videoRoomPlugin.getHandle(event.handle).event(event);
+    // } else {
+      if(this.onEvent != null) onEvent(event);
+    // }
   }
 
   stopKeepAlive() {

@@ -59,4 +59,10 @@ class WSJanusClient extends JanusClient {
     // TODO: implement request
     throw UnimplementedError();
   }
+
+  @override
+  Future<void> sendObject(Map<String, dynamic> object) {
+    // TODO: implement sendObject
+    throw UnimplementedError();
+  }
 }

@@ -1,10 +1,14 @@
+import 'package:janus_client_flutter/src/client/response.dart';
 import 'package:janus_client_flutter/src/constants.dart';
 import 'package:janus_client_flutter/src/transaction.dart';
 
-class ConnectionStateError implements Exception {
+class JanusError implements Exception{
+  String message;
+}
+
+class ConnectionStateError extends JanusError {
 
   var client; //janusclient
-  String message;
   ConnectionState connectionState;
 
   ConnectionStateError({this.client}) {
@@ -13,8 +17,7 @@ class ConnectionStateError implements Exception {
   }
 }
 
-class InvalidTransactionState implements Exception {
-  String message;
+class InvalidTransactionState extends JanusError {
   TransactionState transactionState;
   Transaction transaction;
 
@@ -25,14 +28,24 @@ class InvalidTransactionState implements Exception {
   }
 }
 
-class TransactionTimeoutException implements Exception {
-  String message;
+class TransactionTimeoutError extends JanusError {
   TransactionState transactionState;
   Transaction transaction;
   int timeout;
 
-  TransactionTimeoutException({this.transaction, this.timeout}) {
+  TransactionTimeoutError({this.transaction, this.timeout}) {
     this.message = 'Transaction timeout $timeout';
     this.transactionState = this.transaction.transactionState;
+  }
+}
+
+class ResponseError extends JanusError {
+
+  int code;
+  ClientResponse response;
+
+  ResponseError({this.response}) {
+    this.code = response.request['plugindata']['data']['error_code'];
+    this.message  = response.request['plugindata']['data']['error'];
   }
 }

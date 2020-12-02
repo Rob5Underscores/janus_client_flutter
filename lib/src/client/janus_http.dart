@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:janus_client_flutter/janus_client_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:janus_client_flutter/src/JanusUtil.dart';
+import 'package:janus_client_flutter/src/client/response.dart';
 import 'package:janus_client_flutter/src/constants.dart';
 import 'package:janus_client_flutter/src/errors.dart';
 import 'package:janus_client_flutter/src/session.dart';
@@ -12,15 +14,11 @@ class HTTPJanusClient extends JanusClient {
 
   HTTPJanusClient(url) : super(url);
 
-  @override
-  void close() {
-    // TODO: implement close
-  }
 
   @override
   Future<bool> connect() async {
     await getInfo().then((value) => {
-    if(value) {
+    if(value != null) {
         this.connected = true
     }
     });
@@ -34,11 +32,12 @@ class HTTPJanusClient extends JanusClient {
       'janus' : 'create'
     };
     Session sess;
-
-    await httpCall(HTTPOperation.POST, request: body).then((resp) => {
-      if(resp != null) {
-        JanusUtil.log('Created Session: ${resp['data']['id']}'),
-        sess = new Session(id:resp['data']['id'], janus:this)
+    ClientResponse resp;
+    await request(body).then((res) => {
+      resp = res,
+      if(resp.isSuccess()) {
+        sess = new Session(id:resp.response['data']['id'], janus:this),
+        JanusUtil.log('Created Session: ${sess.id}'),
       }
     });
 
@@ -49,14 +48,17 @@ class HTTPJanusClient extends JanusClient {
     return Future.error('Could not create session!');
   }
 
-  Future<bool> getInfo() async {
-    
-    await httpCall(HTTPOperation.GET, endpoint: "info").then((resp) => {
-      if(resp != null) {
-        this.hasInfo = true
+  Future<ClientResponse> getInfo() async {
+    Completer<ClientResponse> resp = new Completer();
+    await request({'janus':'info'}).then((res) => {
+      if(res.getType() == 'server_info') {
+        this.hasInfo = true,
+        resp.complete(res)
+      } else {
+        resp.completeError(new ResponseError(response: res))
       }
     });
-    return this.hasInfo;
+    return resp.future;
   }
   
   @override
@@ -64,13 +66,10 @@ class HTTPJanusClient extends JanusClient {
     // TODO: implement error
   }
 
-  Future<Map> httpCall(HTTPOperation op, {String endpoint = "", Map<String, dynamic> request}) async {
+  Future<void> httpCall(HTTPOperation op, {String endpoint = "", Map<String, dynamic> request}) async {
     Future<http.Response> fetching;
 
-    Map<String, String> fetchOptions = {
-      // 'headers': 'Accept': 'application/json, text/plain, */*',
-      'cache': 'no-cache'
-    };
+    Map<String, String> fetchOptions = {'cache': 'no-cache'};
 
     if(op == HTTPOperation.GET) {
       fetching = http.get(this.url + endpoint, headers: fetchOptions);
@@ -78,7 +77,6 @@ class HTTPJanusClient extends JanusClient {
       String body;
       if(request != null) {
         final jsonEncoder = JsonEncoder();
-        //request['transaction'] = JanusUtil.getRandString(12);
         body = jsonEncoder.convert(request);
       }
 
@@ -93,18 +91,21 @@ class HTTPJanusClient extends JanusClient {
             JanusUtil.error("HTTP API Call failed ${resp.statusCode}: ${resp.body}"),
           }
         })
-        .timeout(Duration(seconds: requestTimeout), onTimeout: () => JanusUtil.error('Request timed out ${request['janus']}'))
         .catchError((err) => JanusUtil.debug(err));
-    return respBody;
+    this.dispatchObject(respBody);
+    return;
   }
 
+  @override
   Future<void> sendObject(Map<String, dynamic> req) {
-    if(this.isConnected()) {
-      JanusUtil.debug('Sending objecting from client');
-      return httpCall(HTTPOperation.POST, request: req);
-    } else {
-      throw new ConnectionStateError(client: this);
-    }
+    //this method is used for connecting, so we cant check if already connected
+    // (for http)
+    //if(this.isConnected()) {
+      httpCall(HTTPOperation.POST, request: req);
+      return Future.value(null);
+    //} else {
+    //  throw new ConnectionStateError(client: this);
+    //}
   }
 
   Transaction createTransaction(Map<String, dynamic> request, [bool ack = false]) {
@@ -119,18 +120,60 @@ class HTTPJanusClient extends JanusClient {
     if(ack) {
       t.ack = ack;
     }
-    this.transactions.add(t);
+    this.transactions[t.id] = t;
     return t;
   }
 
   @override
-  Future<void> request(Map<String, dynamic> request, [bool ack = false]) async {
-    //return httpCall(HTTPOperation.POST, request:request);
+  Future<ClientResponse> request(Map<String, dynamic> request, [bool ack = false]) async {
     Transaction t = createTransaction(request, ack);
-    await t.start();
-    this.transactions.remove(t.id);
+
+    Completer<ClientResponse> response = new Completer();
+
+    t.onError = (err) => response.completeError(err);
+    t.onEnd = () => this.transactions[t.id] = null;
+    t.onResponse = (resp) => response.complete(resp);
+
+    t.start();
+
+    return response.future;
   }
 
+  dispatchObject(Map<String, dynamic> resp) {
+    String transId;
+    if(resp['transaction'] != null) {
+      transId = resp['transaction'];
+    }
+    if(transId != null && transactions[transId] != null) {
+      Transaction t = transactions[transId];
+      ClientResponse cR = new ClientResponse(request: t.request, response: resp);
+      t.response(cR);
+    } else if(transId != null) {
+      JanusUtil.warn('Rejected object due to no existing session',resp);
+    } else {
+      this.delegateEvent(resp);
+    }
+  }
+
+  delegateEvent(event) {
+    int sessionId;
+    if(event['session_id'] != null && this.sessions[event['session_id']] != null){
+      sessionId = event['session_id'];
+      switch(event['janus']) {
+        case 'timeout':
+          this.sessions[sessionId] = null;
+          break;
+        default:
+          //this.sessions[sessionId].event(event);
+          break;
+      }
+    }
+  }
+
+  @override
+  void close() {
+    // TODO: implement close
+  }
   @override
   void message(message) {
     // TODO: implement message
