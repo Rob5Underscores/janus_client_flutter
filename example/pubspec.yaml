@@ -11,6 +11,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_webrtc: ^0.5.6
 
   janus_client_flutter:
     # When depending on this package from a real application you should use:

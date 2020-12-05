@@ -5,21 +5,23 @@ import 'package:janus_client_flutter/src/session.dart';
 class JanusPlugin {
   String name, fullName;
   Session session;
-  Map<String, PluginHandle> handles = new Map();
+  Map<int, PluginHandle> handles = new Map();
 
   JanusPlugin({this.name, this.fullName, this.session});
 
   void addHandle(PluginHandle pH) {
     handles[pH.id] = pH;
   }
-  void removeHandle(String id) {
+
+  void removeHandle(int id) {
     handles.remove(id);
   }
-  bool hasHandle(String id) {
+
+  bool hasHandle(int id) {
     return handles.containsKey(id);
   }
 
-  Future<String> createHandle(String opaqueId) async {
+  Future<int> createHandle([String opaqueId]) async {
     return this.session.createPluginHandle(this.fullName, opaqueId);
   }
 
@@ -27,7 +29,7 @@ class JanusPlugin {
     return destroyHandleById(handle.id);
   }
 
-  Future<void> destroyHandleById(String id) async {
+  Future<void> destroyHandleById(int id) async {
     if(hasHandle(id)) {
       var handle = handles[id];
       await handle.detach().then((_) => {

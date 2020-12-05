@@ -1,5 +1,6 @@
 import 'package:janus_client_flutter/src/client/response.dart';
 import 'package:janus_client_flutter/src/constants.dart';
+import 'package:janus_client_flutter/src/plugins/handle.dart';
 import 'package:janus_client_flutter/src/transaction.dart';
 
 class JanusError implements Exception{
@@ -45,7 +46,16 @@ class ResponseError extends JanusError {
   ClientResponse response;
 
   ResponseError({this.response}) {
-    this.code = response.request['plugindata']['data']['error_code'];
-    this.message  = response.request['plugindata']['data']['error'];
+    this.code = response.getResponse['error']['code'];
+    this.message  = response.getResponse['error']['reason'];
+  }
+}
+
+class PluginError extends ResponseError {
+  PluginHandle handle;
+
+  PluginError({ClientResponse response, this.handle}):super(response: response) {
+    this.message = response.getResponse['plugindata']['data']['error'];
+    this.code = response.getResponse['plugindata']['data']['error_code'];
   }
 }

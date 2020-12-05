@@ -1,5 +1,7 @@
+import 'package:janus_client_flutter/src/JanusUtil.dart';
 import 'package:janus_client_flutter/src/client/response.dart';
 import 'package:janus_client_flutter/src/constants.dart';
+import 'package:janus_client_flutter/src/errors.dart';
 import 'package:janus_client_flutter/src/session.dart';
 import 'package:janus_client_flutter/src/transaction.dart';
 
@@ -41,14 +43,26 @@ abstract class JanusClient {
 
   void message(message);
 
-  Future<ClientResponse> request(Map<String, dynamic> request);
+  Future<ClientResponse> request(Map<String, dynamic> request, [bool ack]);
 
   Future<void> sendObject(Map<String, dynamic> object);
 
+  void deleteSession(int id) {
+    this.sessions.remove(id);
+    JanusUtil.log('Deleted session: $id');
+    JanusUtil.log('Session count: ${this.sessions.length}');
+  }
+
   Future<void> destroySession(int id) {
     return this.request({'janus':'destroy', 'session_id':id}).then((res) => {
-     // if(res.isSuccess())
+      if(res.isSuccess()) {
+        this.deleteSession(id)
+      } else {
+        throw new ResponseError(response: res)
+      }
     });
   }
+
+  void delegateEvent(event);
 
 }

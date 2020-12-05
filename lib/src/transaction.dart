@@ -54,22 +54,24 @@ class Transaction {
         this.onError(new ResponseError(response: response));
       } else if(this.ack == true && response.isAck()) {
         this.ackReceived = true;
+        if(onAck != null) onAck(response);
         if(this.responseReceived == true) {
           this.lateAck = true;
           this.end();
         } else {
           this.startTimeout();
         }
-        onAck(response);
       } else {
         //response?
         this.responseReceived = true;
+        //TODO: should call the event dispatcher here?? (or is this just onResp)
+        //this.client.delegateEvent(response.getResponse);
+        onResponse(response);
         if(this.ack && !this.ackReceived) {
           this.startTimeout();
         } else {
           this.end();
         }
-        onResponse(response);
       }
     } else {
       onError(new InvalidTransactionState(transaction: this));

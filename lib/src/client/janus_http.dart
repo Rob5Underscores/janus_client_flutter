@@ -12,8 +12,9 @@ import 'package:janus_client_flutter/src/transaction.dart';
 
 class HTTPJanusClient extends JanusClient {
 
-  HTTPJanusClient(url) : super(url);
+  int longPollRetries = 3, longPollRetryCount = 0;
 
+  HTTPJanusClient(url) : super(url);
 
   @override
   Future<bool> connect() async {
@@ -24,6 +25,32 @@ class HTTPJanusClient extends JanusClient {
     });
 
     return this.connected;
+  }
+
+  eventHandler(Session sess) {
+    if(!this.connected) return;
+    JanusUtil.debug('Long poll for session: ${sess.id} ...');
+      Map<String, dynamic> request = {};
+      if(this.token != null) {
+        request['token'] = this.token;
+      }
+      if(this.apiSecret != null) {
+        request['apisecret'] = this.apiSecret;
+      }
+      httpCall(HTTPOperation.GET, request: request, endpoint: "${sess.id}").then((_) => {
+        longPollRetryCount = 0,
+        eventHandler(sess)
+      }).catchError((err) => {
+        JanusUtil.debug("error during long poll"),
+        JanusUtil.error(err),
+        if(longPollRetryCount >= longPollRetries) {
+          JanusUtil.error('Exceeded long poll retries. Terminating '),
+          sess.timeout()
+        } else {
+          longPollRetryCount ++,
+          new Timer(Duration(seconds:3), (() => eventHandler(sess)))
+        }
+      });
   }
 
   @override
@@ -38,11 +65,16 @@ class HTTPJanusClient extends JanusClient {
       if(resp.isSuccess()) {
         sess = new Session(id:resp.response['data']['id'], janus:this),
         JanusUtil.log('Created Session: ${sess.id}'),
+        eventHandler(sess)
       }
     });
 
     if(sess != null) {
       //add session
+      sess.onTimeout = () => {
+        JanusUtil.log('Timeout session: ${sess.id}'),
+        this.deleteSession(sess.id)
+      };
       return sess;
     }
     return Future.error('Could not create session!');
@@ -82,17 +114,18 @@ class HTTPJanusClient extends JanusClient {
 
       fetching = http.post(url+endpoint, headers: fetchOptions, body: body);
     }
-    Map<String, dynamic> respBody;
     await fetching
         .then((resp) => {
           if(resp.statusCode == 200) {
-            respBody = jsonDecode(resp.body)
+            JanusUtil.debug('http resp'),
+            JanusUtil.debug(jsonDecode(resp.body)),
+            this.dispatchObject(jsonDecode(resp.body))
           } else {
             JanusUtil.error("HTTP API Call failed ${resp.statusCode}: ${resp.body}"),
           }
-        })
-        .catchError((err) => JanusUtil.debug(err));
-    this.dispatchObject(respBody);
+        });
+        //.catchError((err) => JanusUtil.debug(err));
+
     return;
   }
 
@@ -125,7 +158,8 @@ class HTTPJanusClient extends JanusClient {
   }
 
   @override
-  Future<ClientResponse> request(Map<String, dynamic> request, [bool ack = false]) async {
+  Future<ClientResponse> request(Map<String, dynamic> request, [bool ack]) async {
+    if(ack == null) ack = false;
     Transaction t = createTransaction(request, ack);
 
     Completer<ClientResponse> response = new Completer();
@@ -140,33 +174,43 @@ class HTTPJanusClient extends JanusClient {
   }
 
   dispatchObject(Map<String, dynamic> resp) {
+    JanusUtil.debug('Dispatching object');
     String transId;
+    //print(resp);
     if(resp['transaction'] != null) {
       transId = resp['transaction'];
     }
     if(transId != null && transactions[transId] != null) {
       Transaction t = transactions[transId];
       ClientResponse cR = new ClientResponse(request: t.request, response: resp);
+      JanusUtil.debug('Object as response');
       t.response(cR);
     } else if(transId != null) {
-      JanusUtil.warn('Rejected object due to no existing session',resp);
+      JanusUtil.warn('Rejected response due to no existing transaction',resp);
     } else {
       this.delegateEvent(resp);
     }
   }
 
+  @override
   delegateEvent(event) {
+    JanusUtil.debug('Delegating event');
     int sessionId;
+    //JanusUtil.debug('printing event');
+    //JanusUtil.debug(event);
     if(event['session_id'] != null && this.sessions[event['session_id']] != null){
+      JanusUtil.debug('Event has valid session id');
       sessionId = event['session_id'];
       switch(event['janus']) {
         case 'timeout':
           this.sessions[sessionId] = null;
           break;
         default:
-          //this.sessions[sessionId].event(event);
+          this.sessions[sessionId].event(event);
           break;
       }
+    } else {
+      JanusUtil.log('Event delegation rejected due to no existing session');
     }
   }
 
