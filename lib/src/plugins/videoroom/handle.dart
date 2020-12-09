@@ -1,14 +1,27 @@
 import 'dart:async';
 
+import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:janus_client_flutter/src/client/response.dart';
 import 'package:janus_client_flutter/src/plugins/handle.dart';
 import 'package:janus_client_flutter/src/plugins/plugin.dart';
 
-// enum ParticipantType {
-//   publisher, listener
-// }
 
 class VideoRoomHandle extends PluginHandle {
+
+  RTCPeerConnection _pc;
+
   VideoRoomHandle(int id, JanusPlugin plugin) : super(id: id, plugin: plugin);
+
+  Future<RTCPeerConnection> pc() {
+    if(_pc != null) return Future.value(_pc);
+    Completer<RTCPeerConnection> completer = new Completer();
+    createPeerConnection(plugin.session.janus.configuration)
+        .then((pc) => {
+          this._pc = pc,
+      completer.complete(this._pc)
+        });
+    return completer.future;
+  }
 
   Future<Map> create([Map<String, dynamic> options]) {
     if(options == null) {
@@ -51,7 +64,7 @@ class VideoRoomHandle extends PluginHandle {
   Future<Map> list() {
     Completer<Map> completer = new Completer();
     this.requestMessage({'request':'list'}).then((res) => {
-      completer.complete({'list':res.getData()['list'] ?? [], 'response':'res'})
+      completer.complete({'list':res.getData()['list'] ?? [], 'response':res})
     }).catchError((err) => completer.completeError(err));
     return completer.future;
   }
@@ -80,8 +93,8 @@ class VideoRoomHandle extends PluginHandle {
     Completer<Map> completer = new Completer();
 
     this.requestMessage(options, true).then((res) => {
-      print(res.request),
-      print(res.response),
+      //print(res.request),
+      //print(res.response),
       completer.complete({
         'id':res.getData()['id'],
         'jsep':res.getJsep(),
@@ -147,6 +160,7 @@ class VideoRoomHandle extends PluginHandle {
     Completer<Map> completer = new Completer();
 
     this.requestMessage(options, true).then((res) => {
+      //print('res: ${res.response}'),
       completer.complete({
         'id':res.getData()['id'],
         'jsep':res.getJsep(),
@@ -181,15 +195,15 @@ class VideoRoomHandle extends PluginHandle {
     return completer.future;
   }
 
-  Future<Map> start(Map<String, dynamic> options) {
+  Future<PluginResponse> start(Map<String, dynamic> options) {
     assert(options['jsep'] != null);
     assert(options['room'] != null);
 
     options['request'] = 'start';
-    Completer<Map> completer = new Completer();
+    Completer<PluginResponse> completer = new Completer();
 
     this.requestMessage(options, true).then((res) => {
-      completer.complete({'response':res})
+      completer.complete(res)
     }).catchError((err) => completer.completeError(err));
 
     return completer.future;

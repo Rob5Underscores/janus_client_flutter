@@ -61,7 +61,7 @@ class Session {
   }
 
   Future<void> keepAlive() {
-    JanusUtil.debug('Outgoing KeepAlive Request for Session: $id');
+    //.debug('Outgoing KeepAlive Request for Session: $id');
     return this.janus.request({
       'janus': 'keepalive', 'session_id': this.id
     });
@@ -74,7 +74,7 @@ class Session {
         {
           this.keepAlive().then((value) =>
           {
-            JanusUtil.debug('Received KeepAlive Success'),
+            //JanusUtil.debug('Received KeepAlive Success'),
             this.keepAliveFailCount = 0,
             this.sessionState = SessionState.alive
           }).catchError((error) =>
@@ -109,7 +109,7 @@ class Session {
   }
 
   event(event) {
-    JanusUtil.debug('Session recived event');
+    //JanusUtil.debug('Session recived event');
     if (this.videoRoomPlugin.hasHandle(event['sender'])) {
       this.videoRoomPlugin.handles[event['sender']].event(event);
     } else {

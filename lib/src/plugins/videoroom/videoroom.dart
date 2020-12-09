@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:janus_client_flutter/src/plugins/plugin.dart';
 import 'package:janus_client_flutter/src/plugins/videoroom/handle.dart';
 import 'package:janus_client_flutter/src/plugins/videoroom/listener.dart';
@@ -42,10 +43,11 @@ class VideoRoomPlugin extends JanusPlugin {
   
   Future<VideoRoomHandle> createVideoRoomHandle([String opaqueId]) {
     Completer<VideoRoomHandle> completer = new Completer();
+    VideoRoomHandle vH;
     this.createHandle(opaqueId).then((id) => {
-      this.addHandle(new VideoRoomHandle(id, this)),
-      //having to cast since super method returns JanusPlugins?
-      completer.complete(this.handles[id] as VideoRoomHandle)
+      vH = new VideoRoomHandle(id, this),
+      this.addHandle(vH),
+      completer.complete(vH)
     }).catchError((err) => completer.completeError(err));
     return completer.future;
   }
@@ -71,14 +73,14 @@ class VideoRoomPlugin extends JanusPlugin {
     return completer.future;
   }
 
-  Future<VideoRoomPublisher> attachPublisherHandle(String handleId, int room, [String opaqueId]) {
+  Future<VideoRoomPublisher> attachPublisherHandle(int handleId, int room, [String opaqueId]) {
     VideoRoomPublisher vH = new VideoRoomPublisher(id:handleId, plugin:this, room:room);
     if(opaqueId != null) vH.opaqueId = opaqueId;
     this.addHandle(vH);
     return Future.value(vH);
   }
 
-  Future<VideoRoomListener> createListenerHandle(int room, var feed, [String opaqueId]) {
+  Future<VideoRoomListener> createListenerHandle(int room, int feed, [String opaqueId]) {
     VideoRoomListener vL;
     Completer<VideoRoomListener> completer = new Completer();
     this.createHandle(opaqueId).then((id) => {
@@ -91,23 +93,23 @@ class VideoRoomPlugin extends JanusPlugin {
     return completer.future;
   }
 
-  Future<VideoRoomListener> attachListenerHandle(String handleId, int room, var feed, [String opaqueId]) {
+  Future<VideoRoomListener> attachListenerHandle(int handleId, int room, int feed, [String opaqueId]) {
     VideoRoomListener vL = new VideoRoomListener(id:handleId,plugin:this,room:room,feed:feed);
     if(opaqueId != null) vL.opaqueId = opaqueId;
     this.addHandle(vL);
     return Future.value(vL);
   }
 
-  Future<VideoRoomPublisher> publishFeed(int room, var offer, [String opaqueId]) {
-    Completer<VideoRoomPublisher> completer = new Completer();
-    this.createPublisherHandle(room, opaqueId).then((createdHandle) => {
-      createdHandle.createAnswer(offer).then((_) =>
-          completer.complete(createdHandle)).catchError((err) => completer.completeError(err))
-    }).catchError((err) => completer.completeError(err));
-    return completer.future;
-  }
+  // Future<VideoRoomPublisher> publishFeed(int room, [RTCSessionDescription offer, String opaqueId]) {
+  //   Completer<VideoRoomPublisher> completer = new Completer();
+  //   this.createPublisherHandle(room, opaqueId).then((createdHandle) => {
+  //       createdHandle.createAnswer(offer).then((_) =>
+  //         completer.complete(createdHandle))
+  //   }).catchError((err) => completer.completeError(err));
+  //   return completer.future;
+  // }
 
-  Future<VideoRoomListener> listenFeed(int room, var feed, [String opaqueId]) {
+  Future<VideoRoomListener> listenFeed(int room, int feed, [String opaqueId]) {
     Completer<VideoRoomListener> completer = new Completer();
     this.createListenerHandle(room, feed, opaqueId).then((createdHandle) => {
       createdHandle.createOffer().then((_) =>
@@ -123,7 +125,8 @@ class VideoRoomPlugin extends JanusPlugin {
     this.defaultHandle().then((handle) =>
         handle.listParticipants({'room':room}).then((result) => {
           if(result['participants'].length > 0) {
-            for(var participant in result['participant']) {
+            for(var participant in result['participants']) {
+              //print('participant: $participant'),
               //had string and bool true check
               if(participant['publisher'] == true) {
                 feeds.add(participant['id'])
@@ -138,7 +141,7 @@ class VideoRoomPlugin extends JanusPlugin {
   }
 
   //list of publishers ids exlcuding given feed id
-  Future<List> getFeedsExclude(int room, var feed) {
+  Future<List> getFeedsExclude(int room, int feed) {
     Completer<List> completer = new Completer();
     this.getFeeds(room).then((feeds) => {
       if(feeds.contains(feed)) feeds.remove(feed),

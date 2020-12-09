@@ -1,6 +1,5 @@
-import 'dart:convert';
-
 import 'package:janus_client_flutter/janus_client_flutter.dart';
+import 'package:janus_client_flutter/src/client/response.dart';
 import 'package:janus_client_flutter/src/session.dart';
 import 'package:web_socket_channel/io.dart';
 
@@ -9,38 +8,30 @@ class WSJanusClient extends JanusClient {
 
   WSJanusClient(url): super(url);
 
-  @override
-  bool isClosing() => this.webSocket == null || !connected;
+  //@override
+  //bool isClosing() => this.webSocket == null || !connected;
 
   @override
-  Future<bool> connect() async {
+  Future<bool> connectJanus() async {
     if (this.webSocket == null) {
       var opts = this.handshakeTimeout != null
           ? {'handshakeTimeout': this.handshakeTimeout}
           : null;
       this.webSocket = new IOWebSocketChannel.connect(this.url,
           protocols: this.protocols, headers: opts);
-      this.webSocket.stream.listen(message, onError: error, onDone: close);
+      //this.webSocket.stream.listen(message, onError: error, onDone: close);
     }
   }
 
-  @override
-  void close() async {
-    if (this.isClosing()) {
-      return;
-    }
-    connected = false;
-
-    this.webSocket = null;
-  }
-
-  @override
-  void error(err) {}
-
-  @override
-  void message(message) {
-    var parsedMessage = jsonDecode(message);
-  }
+  // @override
+  // void close() async {
+  //   if (this.isClosing()) {
+  //     return;
+  //   }
+  //   connected = false;
+  //
+  //   this.webSocket = null;
+  // }
 
   @override
   Future<Session> createSession() {
@@ -55,7 +46,7 @@ class WSJanusClient extends JanusClient {
   }
 
   @override
-  Future<void> request(Map<String, dynamic> request) {
+  Future<ClientResponse> request(Map<String, dynamic> request, [bool ack]) {
     // TODO: implement request
     throw UnimplementedError();
   }
@@ -64,5 +55,10 @@ class WSJanusClient extends JanusClient {
   Future<void> sendObject(Map<String, dynamic> object) {
     // TODO: implement sendObject
     throw UnimplementedError();
+  }
+
+  @override
+  void delegateEvent(event) {
+    // TODO: implement delegateEvent
   }
 }

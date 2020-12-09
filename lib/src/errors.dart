@@ -46,8 +46,9 @@ class ResponseError extends JanusError {
   ClientResponse response;
 
   ResponseError({this.response}) {
-    this.code = response.getResponse['error']['code'];
-    this.message  = response.getResponse['error']['reason'];
+    print('error resp: ${this.response.getResponse}');
+    this.code = response.getResponse['error_code'];
+    this.message  = response.getResponse['error'];
   }
 }
 

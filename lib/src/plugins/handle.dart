@@ -56,7 +56,7 @@ class PluginHandle {
   }
 
   event(Map<String,dynamic> event) {
-    JanusUtil.debug('Received event to plugin handle');
+    //JanusUtil.debug('Received event to plugin handle');
     String jEvent = event['janus'];
     if(jEvent == 'webrtcup') {
       this.connectionState = ConnectionState.connected;
@@ -71,7 +71,7 @@ class PluginHandle {
   }
 
   sendEvent(String eventType, Map<String,dynamic> event) {
-    JanusUtil.debug('Sending handle event type: $eventType');
+    //JanusUtil.debug('Sending handle event type: $eventType');
     switch(eventType){
       case 'webrtcup': if(onWebrtcUp != null) onWebrtcUp(event); break;
       case 'media': if(onMedia != null) onMedia(event); break;

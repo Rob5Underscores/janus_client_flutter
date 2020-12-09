@@ -40,8 +40,13 @@ class Transaction {
     if(this.transactionState == TransactionState.new_) {
       this.transactionState = TransactionState.started;
       this.startTimeout();
-      return this.client.sendObject(this.request).then((_) => {if(onSent != null) onSent(this.request)}
-      ).catchError(onError);
+      //http sent event will actually come back after resp?
+      return this.client.sendObject(this.request)
+          .then((_) => {if(onSent != null) onSent(this.request)})
+          .catchError((err) => {
+            stopTimeout(),
+            onError(err)}
+          );
     } else {
       onError(new InvalidTransactionState(transaction: this));
     }
@@ -51,7 +56,9 @@ class Transaction {
     if(this.transactionState == TransactionState.started || this.transactionState == TransactionState.receiving) {
       this.transactionState = TransactionState.receiving;
       if(response.isError()) {
-        this.onError(new ResponseError(response: response));
+        this.stopTimeout();
+        print('resp err: ${response.response}');
+        onError(new ResponseError(response: response));
       } else if(this.ack == true && response.isAck()) {
         this.ackReceived = true;
         if(onAck != null) onAck(response);
@@ -64,8 +71,6 @@ class Transaction {
       } else {
         //response?
         this.responseReceived = true;
-        //TODO: should call the event dispatcher here?? (or is this just onResp)
-        //this.client.delegateEvent(response.getResponse);
         onResponse(response);
         if(this.ack && !this.ackReceived) {
           this.startTimeout();
@@ -74,6 +79,7 @@ class Transaction {
         }
       }
     } else {
+      this.stopTimeout();
       onError(new InvalidTransactionState(transaction: this));
     }
   }
