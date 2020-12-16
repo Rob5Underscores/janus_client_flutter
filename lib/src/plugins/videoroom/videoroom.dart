@@ -125,6 +125,7 @@ class VideoRoomPlugin extends JanusPlugin {
     this.defaultHandle().then((handle) =>
         handle.listParticipants({'room':room}).then((result) => {
           if(result['participants'].length > 0) {
+            print('participants: ${result['participants']}'),
             for(var participant in result['participants']) {
               //print('participant: $participant'),
               //had string and bool true check

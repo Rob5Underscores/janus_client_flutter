@@ -12,7 +12,7 @@ class VideoRoomExample extends StatefulWidget {
 class _VideoRoomExampleState extends State<VideoRoomExample> {
 
   RTCVideoRenderer localRenderer = new RTCVideoRenderer();
-  List<RTCVideoRenderer> remoteRenderers = [];
+  Map<int, RTCVideoRenderer> remoteRenderers = {};
 
   RTCVideoRenderer rtcVideoRenderer = new RTCVideoRenderer();
 
@@ -24,6 +24,7 @@ class _VideoRoomExampleState extends State<VideoRoomExample> {
   // possible to have 1 subscription for all publishers).
   //feedid / subscription
   Map<int,VideoRoomListener> subscriptions = {};
+
   bool show = false;
 
   int room = 1234;
@@ -100,10 +101,11 @@ class _VideoRoomExampleState extends State<VideoRoomExample> {
             session.videoRoomPlugin.listenFeed(room, p)
                 .then((listen) => {
                   print('created listener handle'),
+              subscriptions[p] = listen,
                   listen.pc().then((pc) => {
                     pc.onTrack = (track) => {
                       print('list ontrack in example'),
-                      addRemoteRenderer(track.streams[0])
+                      addRemoteRenderer(p, track.streams[0])
                     },
                     subscriptions[p] = listen,
                     listen.setRemoteAnswer()
@@ -113,13 +115,14 @@ class _VideoRoomExampleState extends State<VideoRoomExample> {
         })});
   }
 
-  void addRemoteRenderer(MediaStream ms) {
+  void addRemoteRenderer(int id, MediaStream ms) {
+    if(remoteRenderers.containsKey(id)) return;
     RTCVideoRenderer newRend = new RTCVideoRenderer();
     newRend.initialize().then((_) => {{
       newRend.srcObject = ms
     }}).then((_) => {
       setState(() {
-        this.remoteRenderers.add(newRend);
+        this.remoteRenderers[id] = newRend;
       })
     });
   }
@@ -132,7 +135,16 @@ class _VideoRoomExampleState extends State<VideoRoomExample> {
         .then((_) => janus.createSession())
         .then((sess) => this.session = sess)
         .then((_) =>
-        navigator.mediaDevices.getUserMedia({'audio': true, 'video': true}))
+        navigator.mediaDevices.getUserMedia({'audio': true, 'video': {
+          'mandatory': {
+            'minWidth':
+            '640', // Provide your own width, height and frame rate here
+            'minHeight': '480',
+            'minFrameRate': '30',
+          },
+          'facingMode': 'user',
+          'optional': [],
+        }}))
         .then((ls) => localStream = ls)
         .then((_) => localRenderer.srcObject = localStream)
         .then((_) => publishOwnFeed(localStream))
@@ -169,7 +181,7 @@ class _VideoRoomExampleState extends State<VideoRoomExample> {
           if (!snapshot.hasData) return new Text('Loading...');
           return Column(children: <Widget>[
             Row(children: [new Container(child:new RTCVideoView(localRenderer), width: MediaQuery.of(context).size.width, height: MediaQuery.of(context).size.height/4)]),
-            if(remoteRenderers.length > 0) Row(children: remoteRenderers.map((rend) => new Container(child:new RTCVideoView(rend), width: MediaQuery.of(context).size.width/4, height: MediaQuery.of(context).size.height/3)).toList())
+            if(remoteRenderers.length > 0) Row(children: remoteRenderers.values.map((rend) => new Container(child:new RTCVideoView(rend), width: MediaQuery.of(context).size.width/4, height: MediaQuery.of(context).size.height/3)).toList())
             //if(show) Row(children: [new Container(child:new RTCVideoView(rtcVideoRenderer), width: MediaQuery.of(context).size.width, height: MediaQuery.of(context).size.height/4)]),
 
           ]

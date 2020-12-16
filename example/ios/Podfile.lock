@@ -1,0 +1,39 @@
+PODS:
+  - Flutter (1.0.0)
+  - flutter_webrtc (0.2.2):
+    - Flutter
+    - GoogleWebRTC (= 1.1.31999)
+    - Libyuv (= 1703)
+  - GoogleWebRTC (1.1.31999)
+  - janus_client_flutter (0.0.1):
+    - Flutter
+  - Libyuv (1703)
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - flutter_webrtc (from `.symlinks/plugins/flutter_webrtc/ios`)
+  - janus_client_flutter (from `.symlinks/plugins/janus_client_flutter/ios`)
+
+SPEC REPOS:
+  trunk:
+    - GoogleWebRTC
+    - Libyuv
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  flutter_webrtc:
+    :path: ".symlinks/plugins/flutter_webrtc/ios"
+  janus_client_flutter:
+    :path: ".symlinks/plugins/janus_client_flutter/ios"
+
+SPEC CHECKSUMS:
+  Flutter: 0e3d915762c693b495b44d77113d4970485de6ec
+  flutter_webrtc: 39898454258b54ba51996850d5da8d5d53bf1524
+  GoogleWebRTC: b39a78c4f5cc6b0323415b9233db03a2faa7b0f0
+  janus_client_flutter: c9a7bcad7c9e45cfbfd54f3b770cf57915e28a2e
+  Libyuv: 5f79ced0ee66e60a612ca97de1e6ccacd187a437
+
+PODFILE CHECKSUM: 3dffd8c48b531d21ec0ec153c22dc8e3a6223bc9
+
+COCOAPODS: 1.10.0.rc.1

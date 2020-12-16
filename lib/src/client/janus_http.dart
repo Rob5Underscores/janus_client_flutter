@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:janus_client_flutter/src/JanusUtil.dart';
 import 'package:janus_client_flutter/src/client/response.dart';
 import 'package:janus_client_flutter/src/constants.dart';
+import 'package:janus_client_flutter/src/errors.dart';
 import 'package:janus_client_flutter/src/session.dart';
 import 'package:janus_client_flutter/src/transaction.dart';
 
@@ -102,6 +103,7 @@ class HTTPJanusClient extends JanusClient {
             this.dispatchObject(jsonDecode(resp.body))
           } else {
             JanusUtil.error("HTTP API Call failed ${resp.statusCode}: ${resp.body}"),
+            throw new ResponseError(response: jsonDecode(resp.body))
           }
         });
   }

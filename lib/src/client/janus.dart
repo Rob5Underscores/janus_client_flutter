@@ -24,7 +24,7 @@ abstract class JanusClient {
     'iceServers': [
       {'url': 'stun:stun.l.google.com:19302'},
     ],
-    'sdpSemantics': 'unified-plan'
+    'sdpSemantics': 'unified-plan',
   };
 
   @protected
