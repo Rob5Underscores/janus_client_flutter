@@ -27,7 +27,11 @@ class VideoRoomListener extends VideoRoomHandle {
                 this.trickle(candidate.toMap()),
               },
           pc.onSignalingState =
-              (event) => JanusUtil.debug('listener: signal state')
+              (event) => JanusUtil.debug('listener: signal state'),
+      pc.onAddStream =
+          (stream) => JanusUtil.debug('listener: add stream'),
+      pc.onAddTrack =
+          (ms, track) => JanusUtil.debug('listener: add track')
         });
   }
 
@@ -47,7 +51,6 @@ class VideoRoomListener extends VideoRoomHandle {
   }
 
   Future<void> setRemoteAnswer([RTCSessionDescription answer]) {
-    //answer.sdp = answer.sdp.replaceAll('/a=(sendrecv|sendonly)/', 'a=recvonly');
     JanusUtil.debug('setting listener remote');
     return this.pc().then((pc) => pc.createAnswer({
           'mandatory': {

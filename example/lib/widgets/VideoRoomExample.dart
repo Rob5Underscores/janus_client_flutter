@@ -14,8 +14,6 @@ class _VideoRoomExampleState extends State<VideoRoomExample> {
   RTCVideoRenderer localRenderer = new RTCVideoRenderer();
   Map<int, RTCVideoRenderer> remoteRenderers = {};
 
-  RTCVideoRenderer rtcVideoRenderer = new RTCVideoRenderer();
-
   VideoRoomPublisher publisher;
 
   Session session;
@@ -25,7 +23,6 @@ class _VideoRoomExampleState extends State<VideoRoomExample> {
   //feedid / subscription
   Map<int,VideoRoomListener> subscriptions = {};
 
-  bool show = false;
 
   int room = 1234;
 
@@ -68,6 +65,33 @@ class _VideoRoomExampleState extends State<VideoRoomExample> {
   void _onVideoRoomEvent(Map event) {
     print('received videroom event in example');
     print(event);
+    var data = event['plugindata']['data'];
+    if(data['videoroom'] == 'event') {
+      if(data['publishers'] != null) {
+        checkPublishers(data['publishers']);
+      }
+    }
+  }
+
+  void checkPublishers(List publishers) {
+    for(var p in publishers) {
+      if(!subscriptions.containsKey(p['id'])) {
+        print('publisher to listen to: $p');
+        session.videoRoomPlugin.listenFeed(room, p['id'])
+            .then((listen) => {
+          print('created listener handle'),
+          subscriptions[p['id']] = listen,
+          listen.pc().then((pc) => {
+            pc.onTrack = (track) => {
+              print('list ontrack in example'),
+              addRemoteRenderer(p['id'], track.streams[0])
+            },
+            subscriptions[p['id']] = listen,
+            listen.setRemoteAnswer()
+          })
+        });
+      }
+    }
   }
 
   void _onTrickle() {
@@ -129,7 +153,6 @@ class _VideoRoomExampleState extends State<VideoRoomExample> {
 
   Future<void> setup() {
     localRenderer.initialize();
-    rtcVideoRenderer.initialize();
     MediaStream localStream;
     return janus.connect()
         .then((_) => janus.createSession())
@@ -149,7 +172,7 @@ class _VideoRoomExampleState extends State<VideoRoomExample> {
         .then((_) => localRenderer.srcObject = localStream)
         .then((_) => publishOwnFeed(localStream))
         .then((_) => registerEvents(this.publisher))
-        .then((_) => updateSubscribers())
+        //.then((_) => updateSubscribers())
         .then((_) => this.isSetup = true)
         .then((_) => Future.value(true));
   }
@@ -159,7 +182,12 @@ class _VideoRoomExampleState extends State<VideoRoomExample> {
     return session.videoRoomPlugin.createPublisherHandle(room)
         .then((VideoRoomPublisher pH) => this.publisher = pH)
         .then((_) => this.publisher.addLocalMedia(localStream))
-        .then((_) => this.publisher.createAnswer());
+        .then((_) => this.publisher.createAnswer())
+        .then((res) => {
+          if(res['publishers'] != null) {
+            checkPublishers(res['publishers'])
+          }
+    });
   }
 
   @override
@@ -180,7 +208,7 @@ class _VideoRoomExampleState extends State<VideoRoomExample> {
           if (snapshot.hasError) return new Text('Error: ${snapshot.error}');
           if (!snapshot.hasData) return new Text('Loading...');
           return Column(children: <Widget>[
-            Row(children: [new Container(child:new RTCVideoView(localRenderer), width: MediaQuery.of(context).size.width, height: MediaQuery.of(context).size.height/4)]),
+            Row(children: [new Container(child:new RTCVideoView(localRenderer, mirror: true), width: MediaQuery.of(context).size.width, height: MediaQuery.of(context).size.height/4)]),
             if(remoteRenderers.length > 0) Row(children: remoteRenderers.values.map((rend) => new Container(child:new RTCVideoView(rend), width: MediaQuery.of(context).size.width/4, height: MediaQuery.of(context).size.height/3)).toList())
             //if(show) Row(children: [new Container(child:new RTCVideoView(rtcVideoRenderer), width: MediaQuery.of(context).size.width, height: MediaQuery.of(context).size.height/4)]),
 

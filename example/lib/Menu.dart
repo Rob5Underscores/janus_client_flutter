@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_webrtc/flutter_webrtc.dart';
-import 'package:janus_client_flutter/janus_client_flutter.dart';
-import 'package:janus_client_flutter_example/widgets/VideoRoomExample.dart';
+import 'package:janus_client_flutter_example/widgets/NewVideoRoomExample.dart';
 
 class Menu extends StatelessWidget {
 
@@ -9,7 +7,7 @@ class Menu extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          title: const Text('Plugin example app'),
+          title: const Text('Flutter Janus Client'),
         ),
         body: Column(
           children: [
@@ -17,7 +15,7 @@ class Menu extends StatelessWidget {
               title: Text("VideoRoom Example"),
               onTap: () {
                 Navigator.push(context, MaterialPageRoute(builder: (context) {
-                  return VideoRoomExample(key: UniqueKey());
+                  return NewVideoRoomExample(key: UniqueKey());
                 }));
               },
             )

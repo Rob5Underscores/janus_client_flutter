@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:janus_client_flutter/src/JanusUtil.dart';
 import 'package:janus_client_flutter/src/plugins/videoroom/handle.dart';
@@ -35,48 +37,22 @@ class VideoRoomPublisher extends VideoRoomHandle {
 
   Future<void> addLocalMedia(MediaStream localStream) {
     return this.pc().then((pc) => {
-          localStream.getTracks().forEach((track) async => await pc.addTrack(track, localStream))
-          // pc.addTransceiver(
-          //         track: localStream.getAudioTracks()[0],
-          //         init: RTCRtpTransceiverInit(
-          //             direction: TransceiverDirection.SendOnly,
-          //             streams: [localStream]
-          //         ))
-          //     .then((_) => pc.addTransceiver(
-          //         track: localStream.getVideoTracks()[0],
-          //         init: RTCRtpTransceiverInit(
-          //           direction: TransceiverDirection.SendOnly,
-          //           streams: [localStream],
-          //           sendEncodings: [
-          //             // for firefox order matters... first high resolution, then scaled resolutions...
-          //             RTCRtpEncoding(
-          //               rid: 'f',
-          //               maxBitrate: 900000,
-          //               numTemporalLayers: 3,
-          //             ),
-          //             RTCRtpEncoding(
-          //               rid: 'h',
-          //               numTemporalLayers: 3,
-          //               maxBitrate: 300000,
-          //               scaleResolutionDownBy: 2.0,
-          //             ),
-          //             RTCRtpEncoding(
-          //               rid: 'q',
-          //               numTemporalLayers: 3,
-          //               maxBitrate: 100000,
-          //               scaleResolutionDownBy: 4.0,
-          //             ),
-          //           ],
-          //         )))
-        });
+          localStream.getTracks().forEach((track) async =>
+          await pc.addTransceiver(
+                  track: track,
+                  init: RTCRtpTransceiverInit(
+                      direction: TransceiverDirection.SendOnly,
+                      streams: [localStream]
+                  ))
+          )});
   }
 
-  Future<void> createAnswer([RTCSessionDescription offer]) {
+  Future<Map> createAnswer([RTCSessionDescription offer]) {
     //must pass an offer (from pc.createOffer)
     RTCPeerConnection peer;
-    print('publisher here 0');
-    return pc()
-        .then((pc) => peer = pc)
+    Map result;
+    Completer<Map> completer = new Completer();
+    pc().then((pc) => peer = pc)
         .then((_) => peer.createOffer({'offerToReceiveVideo': false, 'offerToReceiveAudio':false}))
         .then((nOffer) => {
           if(offer == null) offer = nOffer,
@@ -87,9 +63,12 @@ class VideoRoomPublisher extends VideoRoomHandle {
             print('publisher here 2'),
             this.publisherId = res['id'],
             this.desc = new RTCSessionDescription(
-            res['jsep']['sdp'], res['jsep']['type'])
+            res['jsep']['sdp'], res['jsep']['type']),
+            result = res
           }).then((_) => peer.setRemoteDescription(desc))
+              .then((_) => completer.complete(result))
         })
-    });
+    }).catchError((err) => completer.completeError(err));
+    return completer.future;
   }
 }
