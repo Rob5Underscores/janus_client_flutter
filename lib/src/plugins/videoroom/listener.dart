@@ -28,11 +28,16 @@ class VideoRoomListener extends VideoRoomHandle {
               },
           pc.onSignalingState =
               (event) => JanusUtil.debug('listener: signal state'),
-      pc.onAddStream =
-          (stream) => JanusUtil.debug('listener: add stream'),
-      pc.onAddTrack =
-          (ms, track) => JanusUtil.debug('listener: add track')
+          pc.onAddStream =
+              (stream) => JanusUtil.debug('listener: add stream'),
+          pc.onAddTrack =
+              (ms, track) => JanusUtil.debug('listener: add track'),
+          pc.onRemoveStream =
+              (stream) => JanusUtil.debug('listener: remove stream'),
+          pc.onRemoveTrack =
+              (ms, track) => JanusUtil.debug('listener: remove track')
         });
+
   }
 
   Future<void> createOffer() {
