@@ -4,6 +4,7 @@ A better Janus client built for Flutter
 
 ## To Do
 Implement the Websocket interface
+Add support for string IDs
 
 
 
