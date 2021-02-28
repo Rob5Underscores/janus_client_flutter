@@ -14,7 +14,7 @@ class HTTPJanusClient extends JanusClient {
 
   int longPollRetries = 3, longPollRetryCount = 0;
 
-  HTTPJanusClient(url) : super(url);
+  HTTPJanusClient(url, [debug = false]) : super(url,debug);
 
   @override
   Future<bool> connectJanus() {
@@ -93,7 +93,7 @@ class HTTPJanusClient extends JanusClient {
         final jsonEncoder = JsonEncoder();
         body = jsonEncoder.convert(request);
       }
-
+      //JanusUtil.debug("Body: $body");
       fetching = http.post(url+endpoint, headers: fetchOptions, body: body);
     }
 

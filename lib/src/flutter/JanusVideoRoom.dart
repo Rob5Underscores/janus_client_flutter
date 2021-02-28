@@ -30,33 +30,33 @@ class JanusVideoRoom with ChangeNotifier {
   }
 
   void _onSessionEvent() {
-    print('received session event in example');
+    print('received session event in JVR plugin');
   }
 
   void _onWebrtcUp(Map test) {
-    print('received webrtcup event in example');
+    print('received webrtcup event in JVR plugin');
     print(test);
   }
 
   void _onMedia(Map test) {
-    print('received media event in example');
+    print('received media event in JVR plugin');
     print(test);
   }
 
   void _onHangup() {
-    print('received hangup event in example');
+    print('received hangup event in JVR plugin');
   }
 
   void _onSlowlink() {
-    print('received slowlink event in example');
+    print('received slowlink event in JVR plugin');
   }
 
   void _onDetached() {
-    print('received detatched event in example');
+    print('received detatched event in JVR plugin');
   }
 
   void _onTrickle() {
-    print('received trickle event in example');
+    print('received trickle event in JVR plugin');
   }
 
   void _onVideoRoomEvent(Map event) {
@@ -120,7 +120,6 @@ class JanusVideoRoom with ChangeNotifier {
   }
 
   Future<void> publishOwnFeed(MediaStream localStream) {
-    print('called');
     return session.videoRoomPlugin
         .createPublisherHandle(room)
         .then((VideoRoomPublisher pH) => this.publisher = pH)
@@ -144,11 +143,11 @@ class JanusVideoRoom with ChangeNotifier {
   //Need to register the events and make sure the code passes them all this far
   void createListener(Map publisher) {
     if (!subscriptions.containsKey(publisher['id'])) {
-      print('publisher to listen to: $publisher');
+      //print('publisher to listen to: $publisher');
       session.videoRoomPlugin
           .listenFeed(room, publisher['id'])
           .then((listen) => {
-                print('created listener handle'),
+                //print('created listener handle'),
                 subscriptions[publisher['id']] = listen,
                 listen.pc().then((pc) => {
                       pc.onTrack = (track) =>

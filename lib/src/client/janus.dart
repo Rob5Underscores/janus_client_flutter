@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:janus_client_flutter/src/JanusUtil.dart';
 import 'package:janus_client_flutter/src/client/response.dart';
 import 'package:janus_client_flutter/src/constants.dart';
@@ -32,8 +31,10 @@ abstract class JanusClient {
 
   ClientEvent lastConnectionEvent = ClientEvent.disconnected;
 
-  JanusClient(this.url, [configuration]) {
-    if(configuration != null) this.configuration = configuration;
+  JanusClient(this.url, [debug]) {
+    if(debug != null && debug) {
+      JanusUtil.debugLevel = 'all';
+    }
   }
 
   Future<Session> createSession();

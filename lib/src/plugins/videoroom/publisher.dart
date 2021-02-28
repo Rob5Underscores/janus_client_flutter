@@ -56,11 +56,10 @@ class VideoRoomPublisher extends VideoRoomHandle {
         .then((_) => peer.createOffer({'offerToReceiveVideo': false, 'offerToReceiveAudio':false}))
         .then((nOffer) => {
           if(offer == null) offer = nOffer,
-      print('publisher here 1'),
       peer.setLocalDescription(offer).then((_) => {
           this.publishFeed({'room': this.room, 'jsep': offer.toMap()}).then((res) => {
-            print('publish res: $res'),
-            print('publisher here 2'),
+            //print('publish res: $res'),
+            //print('publisher here 2'),
             this.publisherId = res['id'],
             this.desc = new RTCSessionDescription(
             res['jsep']['sdp'], res['jsep']['type']),

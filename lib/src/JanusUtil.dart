@@ -6,7 +6,7 @@ import 'package:logger/logger.dart';
 class JanusUtil {
 
   static Logger logger = new Logger();
-  static String debugLevel = 'all';
+  static String debugLevel = 'error';
 
   static vdebug(dynamic msg, [dynamic err, StackTrace stackTrace]) {
     logger.v(msg, err, stackTrace);
