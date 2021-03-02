@@ -17,12 +17,13 @@ class HTTPJanusClient extends JanusClient {
   HTTPJanusClient(url, [debug = false]) : super(url,debug);
 
   @override
-  Future<bool> connectJanus() {
+  Future<bool> connect() {
+    if(isConnected()) return Future.value(true);
     Completer<bool> completer = new Completer();
     getInfo().then((clientResponse) => {
       this.connected = true,
       completer.complete(this.connected)
-    }).catchError((err) => completer.completeError(err));
+    }).catchError(completer.completeError);
 
     return completer.future;
   }
@@ -74,7 +75,7 @@ class HTTPJanusClient extends JanusClient {
         eventHandler(sess),
         completer.complete(sess)
       }
-    }).catchError((err) => completer.completeError(err));
+    }).catchError(completer.completeError);
 
     return completer.future;
   }

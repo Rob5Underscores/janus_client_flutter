@@ -6,27 +6,120 @@ import 'package:janus_client_flutter/src/plugins/videoroom/listener.dart';
 import 'package:janus_client_flutter/src/session.dart';
 
 class JanusVideoRoom with ChangeNotifier {
+  JanusClient janus;
+  int room = 1234;
+  MediaStream localStream, displayMediaStream;
+
   Session session;
 
+  Map<int, RTCVideoRenderer> remotes = {};
   RTCVideoRenderer local = new RTCVideoRenderer();
-
-  int room;
 
   //this is 1-1 for each publisher there is (in the future it might be
   // possible to have 1 subscription for all publishers).
   //feedid / subscription
   Map<int, VideoRoomListener> subscriptions = {};
-  Map<int, RTCVideoRenderer> remotes = {};
+  VideoRoomPublisher publisher, screenSharePublisher;
 
-  JanusClient janus;
+  bool isSetup = false,
+      isMuted = false,
+      isCameraOff = false,
+      isFlipped = false,
+      isSharingScreen = false,
+      supportsFlipping = false;
 
-  VideoRoomPublisher publisher;
+  JanusVideoRoom({this.janus});
 
-  JanusVideoRoom({this.janus, this.room = 1234});
+  Future<void> setup() {
+    if (isSetup) return Future.value(true);
+    return setLocalStream()
+        //returns true of already connected
+        .then((_) => janus.connect())
+        .then((_) => start(localStream))
+        .then((_) => this.isSetup = true)
+        .then((_) => Future.value(true));
+  }
 
   //this is the output of this class
   List<RTCVideoView> getRemoteVideoViews() {
     return remotes.values.map((rend) => new RTCVideoView(rend)).toList();
+  }
+
+  void toggleMute() {
+    isMuted = !isMuted;
+    localStream.getAudioTracks().forEach((track) {
+      track.enabled = !isMuted;
+    });
+  }
+
+  Future<void> setLocalStream() {
+    return navigator.mediaDevices
+        .getUserMedia({'audio': !isMuted, 'video': !isCameraOff})
+        .then((MediaStream ms) => localStream = ms)
+        .then((_) => Helper.cameras)
+        .then((cameras) => {if (cameras.length > 1) supportsFlipping = true});
+  }
+
+  // Future<void> updateLocalStream() {
+  //   int cameraCount = 0;
+  //   return navigator.mediaDevices
+  //       .enumerateDevices()
+  //       .then((info) => {
+  //     info.forEach((device) {
+  //       if (device.kind == 'videoinput') {
+  //         cameraCount++;
+  //       }
+  //     }),
+  //     if (cameraCount >= 2)
+  //       {
+  //         // setState(() {
+  //         //   this.supportsFlipping = true;
+  //         // })
+  //       }
+  //   })
+  //       .then((_) => navigator.mediaDevices.getUserMedia({
+  //     'audio': !isMuted,
+  //     'video': !isCameraOff,
+  //     'facingMode': isFlipped ? 'user' : 'environment'
+  //   }))
+  //       .then((ls) => localStream = ls);
+  // }
+
+  void flipCamera() {
+    isFlipped = !isFlipped;
+    if (localStream != null)
+      Helper.switchCamera(localStream.getVideoTracks()[0]);
+  }
+
+  void toggleCamera() {
+    //TODO: actually stop media or something, but this works for now (blacks screen)
+    isCameraOff = !isCameraOff;
+    localStream.getVideoTracks().forEach((track) {
+      track.enabled = !isCameraOff;
+    });
+  }
+
+  Future<void> toggleShareScreen() {
+    if (isSharingScreen) {
+      return session.videoRoomPlugin
+          .destroyHandle(this.screenSharePublisher)
+          .then((_) => this.screenSharePublisher = null)
+          .then((_) =>
+              {this.displayMediaStream.dispose(), isSharingScreen = false});
+    } else {
+      return navigator.mediaDevices
+          .getDisplayMedia({'audio': !isMuted, 'video': !isCameraOff})
+          .then((ms) => {
+                this.displayMediaStream = ms,
+                session.videoRoomPlugin
+                    .createPublisherHandle(room)
+                    .then((VideoRoomPublisher pH) =>
+                        this.screenSharePublisher = pH)
+                    .then((_) => this.screenSharePublisher.addLocalMedia(ms))
+                    .then((_) => this.screenSharePublisher.createAnswer())
+              })
+          .then((_) => isSharingScreen = true);
+    }
   }
 
   void _onSessionEvent() {
@@ -66,14 +159,14 @@ class JanusVideoRoom with ChangeNotifier {
     if (data['videoroom'] == 'event') {
       if (data['publishers'] != null) {
         createListeners(data['publishers']);
-      } else if(data['unpublished'] != null) {
+      } else if (data['unpublished'] != null) {
         removeRemote(data['unpublished']);
       }
     }
   }
 
   void removeRemote(int publisherId) {
-    if(remotes[publisherId]  != null) {
+    if (remotes[publisherId] != null) {
       print('Removing remote!');
       remotes.remove(publisherId);
       notifyListeners();
@@ -104,7 +197,9 @@ class JanusVideoRoom with ChangeNotifier {
   }
 
   void addRemote(int pubId, MediaStream mediaStream) {
-    if (remotes.containsKey(pubId)) return;
+    if (remotes.containsKey(pubId) ||
+        (screenSharePublisher != null &&
+            screenSharePublisher.publisherId == pubId)) return;
     RTCVideoRenderer newRend = new RTCVideoRenderer();
     newRend
         .initialize()
@@ -127,9 +222,7 @@ class JanusVideoRoom with ChangeNotifier {
         .then((_) => this.publisher.createAnswer())
         .then((res) => {
               if (res['publishers'] != null)
-                {
-                  createListeners(res['publishers'])
-                }
+                {createListeners(res['publishers'])}
             });
   }
 
@@ -161,13 +254,16 @@ class JanusVideoRoom with ChangeNotifier {
   Future<void> start(MediaStream localStream) {
     //if local is null then should just create publisher with audio and video false? (if not then populate basic)
     //can configure to add video later?
-    return janus.createSession()
+    return janus
+        .createSession()
         .then((session) => this.session = session)
         .then((_) => publishOwnFeed(localStream))
         .then((value) => registerEvents(this.publisher));
   }
 
   void close() {
+    if (localStream != null) localStream.dispose();
+    if (displayMediaStream != null) displayMediaStream.dispose();
     this.subscriptions.clear();
     this.remotes.clear();
   }

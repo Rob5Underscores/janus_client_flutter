@@ -12,7 +12,8 @@ class WSJanusClient extends JanusClient {
   //bool isClosing() => this.webSocket == null || !connected;
 
   @override
-  Future<bool> connectJanus() async {
+  Future<bool> connect() async {
+    if(this.isConnected()) return Future.value(true);
     if (this.webSocket == null) {
       var opts = this.handshakeTimeout != null
           ? {'handshakeTimeout': this.handshakeTimeout}

@@ -67,7 +67,7 @@ class VideoRoomPublisher extends VideoRoomHandle {
           }).then((_) => peer.setRemoteDescription(desc))
               .then((_) => completer.complete(result))
         })
-    }).catchError((err) => completer.completeError(err));
+    }).catchError(completer.completeError);
     return completer.future;
   }
 }

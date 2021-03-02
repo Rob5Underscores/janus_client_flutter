@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_webrtc/flutter_webrtc.dart';
-import 'package:janus_client_flutter/janus_client_flutter.dart';
 import 'package:janus_client_flutter_example/Menu.dart';
-import 'package:janus_client_flutter_example/widgets/VideoRoomExample.dart';
 
 void main() {
   runApp(MyApp());

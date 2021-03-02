@@ -49,9 +49,7 @@ abstract class JanusClient {
     return (this.hasInfo) ? this.info['version_string'] : '';
   }
   
-  Future<bool> connect() {
-    return connectJanus();
-  }
+  Future<bool> connect();
 
   Future<ClientResponse> getInfo() {
     Completer<ClientResponse> resp = new Completer();
@@ -65,8 +63,6 @@ abstract class JanusClient {
     }).catchError((err) => resp.completeError(err));
     return resp.future;
   }
-
-  Future<bool> connectJanus();
 
   Future<ClientResponse> request(Map<String, dynamic> request, [bool ack]);
 

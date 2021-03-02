@@ -13,50 +13,33 @@ class _NewVideoRoomExampleState extends State<NewVideoRoomExample> {
 
   RTCVideoRenderer localRenderer = new RTCVideoRenderer();
 
-  bool isSetup = false;
+  //second arg is debug
+  JanusClient _janus =
+  new HTTPJanusClient('https://janus.rob5underscores.co.uk/api/', false);
   JanusVideoRoom jVR;
-  int room = 1234;
-
   List<RTCVideoView> remotes = [];
-
-  JanusClient janus = new HTTPJanusClient(
-      'https://janus.rob5underscores.co.uk/api/');
+  Future _future;
 
   @override
   void initState() {
     super.initState();
-  }
-
-  Future<void> setup() {
-    if(isSetup) return Future.value(true);
-    localRenderer.initialize();
-    MediaStream localStream;
-    return navigator.mediaDevices.getUserMedia({'audio': true, 'video': true})
-        .then((ls) => localStream = ls)
-        .then((_) => {
-          localRenderer.srcObject = localStream,
-      localRenderer.muted = true
-        })
-    .then((_) => janus.connect())
-    .then((_) => jVR = new JanusVideoRoom(janus:janus, room:1234))
-    .then((_) => jVR.start(localStream))
-    .then((_) => jVR.addListener(() {
-      print('Updating VideoRoom');
+    jVR = new JanusVideoRoom(janus: _janus);
+    jVR.room = 1234;
+    _future = jVR.setup();
+    jVR.addListener(() {
       setState(() {
         this.remotes = jVR.getRemoteVideoViews();
       });
-    }))
-    .then((_) => this.isSetup = true)
-    .then((_) => Future.value(true));
+    });
   }
 
   @override
   void deactivate() {
     super.deactivate();
-    if(jVR != null) {
+    if (jVR != null) {
       jVR.close();
     }
-    janus.disconnect();
+    _janus.disconnect();
   }
 
   @override
@@ -66,7 +49,7 @@ class _NewVideoRoomExampleState extends State<NewVideoRoomExample> {
         title: new Text('Janus VideoRoom Example'),
       ),
       body: new FutureBuilder(
-        future: setup(),
+        future: _future,
         builder: (BuildContext context, AsyncSnapshot snapshot) {
           if (snapshot.hasError) return new Text('Error: ${snapshot.error}');
           if (!snapshot.hasData) return new Text('Loading...');
