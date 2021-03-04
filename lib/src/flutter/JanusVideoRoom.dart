@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:janus_client_flutter/janus_client_flutter.dart';
@@ -26,16 +29,24 @@ class JanusVideoRoom with ChangeNotifier {
       isCameraOff = false,
       isFlipped = false,
       isSharingScreen = false,
-      supportsFlipping = false;
+      supportsFlipping = false,
+      _publish = true;
 
   JanusVideoRoom({this.janus});
 
-  Future<void> setup() {
+  Future<bool> setup([bool publish = true]) {
+    if(publish != null) {
+      this._publish = publish;
+    }
     if (isSetup) return Future.value(true);
+    this.isSetup = true;
     return setLocalStream()
         //returns true of already connected
         .then((_) => janus.connect())
-        .then((_) => start(localStream))
+        .then((_) => janus.createSession())
+        .then((session) => this.session = session)
+        .then((_) => _publish ? publishStream(session, localStream) : listenRoom(session))
+        .then((pub) => this.publisher = pub)
         .then((_) => this.isSetup = true)
         .then((_) => Future.value(true));
   }
@@ -59,31 +70,6 @@ class JanusVideoRoom with ChangeNotifier {
         .then((_) => Helper.cameras)
         .then((cameras) => {if (cameras.length > 1) supportsFlipping = true});
   }
-
-  // Future<void> updateLocalStream() {
-  //   int cameraCount = 0;
-  //   return navigator.mediaDevices
-  //       .enumerateDevices()
-  //       .then((info) => {
-  //     info.forEach((device) {
-  //       if (device.kind == 'videoinput') {
-  //         cameraCount++;
-  //       }
-  //     }),
-  //     if (cameraCount >= 2)
-  //       {
-  //         // setState(() {
-  //         //   this.supportsFlipping = true;
-  //         // })
-  //       }
-  //   })
-  //       .then((_) => navigator.mediaDevices.getUserMedia({
-  //     'audio': !isMuted,
-  //     'video': !isCameraOff,
-  //     'facingMode': isFlipped ? 'user' : 'environment'
-  //   }))
-  //       .then((ls) => localStream = ls);
-  // }
 
   void flipCamera() {
     isFlipped = !isFlipped;
@@ -109,21 +95,16 @@ class JanusVideoRoom with ChangeNotifier {
     } else {
       return navigator.mediaDevices
           .getDisplayMedia({'audio': !isMuted, 'video': !isCameraOff})
-          .then((ms) => {
-                this.displayMediaStream = ms,
-                session.videoRoomPlugin
-                    .createPublisherHandle(room)
-                    .then((VideoRoomPublisher pH) =>
-                        this.screenSharePublisher = pH)
-                    .then((_) => this.screenSharePublisher.addLocalMedia(ms))
-                    .then((_) => this.screenSharePublisher.createAnswer())
-              })
+          .then((ms) => this.displayMediaStream = ms)
+          .then((_) => publishStream(session, this.displayMediaStream, false, false))
+          .then((pub) => this.screenSharePublisher = pub)
           .then((_) => isSharingScreen = true);
     }
   }
 
-  void _onSessionEvent() {
+  void _onSessionEvent(Map map) {
     print('received session event in JVR plugin');
+    print(map);
   }
 
   void _onWebrtcUp(Map test) {
@@ -136,16 +117,18 @@ class JanusVideoRoom with ChangeNotifier {
     print(test);
   }
 
-  void _onHangup() {
+  void _onHangup(Map test) {
     print('received hangup event in JVR plugin');
+    print(test);
   }
 
   void _onSlowlink() {
     print('received slowlink event in JVR plugin');
   }
 
-  void _onDetached() {
+  void _onDetached(Map map) {
     print('received detatched event in JVR plugin');
+    print(map);
   }
 
   void _onTrickle() {
@@ -156,6 +139,10 @@ class JanusVideoRoom with ChangeNotifier {
     print('received videroom event in example');
     print(event);
     var data = event['plugindata']['data'];
+    //if(data['sender'] != publisher.id) {
+    //  print('EVENT DISCARDED BECAUSE WRONG SENDER');
+    //  return;
+    //}
     if (data['videoroom'] == 'event') {
       if (data['publishers'] != null) {
         createListeners(data['publishers']);
@@ -206,24 +193,47 @@ class JanusVideoRoom with ChangeNotifier {
         .then((_) => {
               {newRend.srcObject = mediaStream}
             })
-        .then((_) => {
-              //setState(() {
-              this.remotes[pubId] = newRend,
-              notifyListeners()
-              //})
-            });
+        .then((_) => {this.remotes[pubId] = newRend, notifyListeners()});
   }
 
-  Future<void> publishOwnFeed(MediaStream localStream) {
-    return session.videoRoomPlugin
+  Future<VideoRoomPublisher> publishStream(Session session, MediaStream mediaStream,
+      [bool shouldCreateListeners = true, bool shouldRegisterListeners = true]) {
+    Completer<VideoRoomPublisher> completer = new Completer();
+    VideoRoomPublisher pub;
+    session.videoRoomPlugin
         .createPublisherHandle(room)
-        .then((VideoRoomPublisher pH) => this.publisher = pH)
-        .then((_) => this.publisher.addLocalMedia(localStream))
-        .then((_) => this.publisher.createAnswer())
+        .then((VideoRoomPublisher pH) => pub = pH)
+        .then((_) => pub.addLocalMedia(mediaStream))
+        .then((_) => pub.createAnswer())
         .then((res) => {
-              if (res['publishers'] != null)
-                {createListeners(res['publishers'])}
-            });
+              if (res['publishers'] != null && shouldCreateListeners) {
+                  createListeners(res['publishers'])
+                }})
+        .then((_) => {
+          if(shouldRegisterListeners) {
+            registerEvents(pub)
+          }})
+        .then((_) => completer.complete(pub));
+    return completer.future;
+  }
+
+  Future<VideoRoomPublisher> listenRoom(Session session, [bool shouldCreateListeners = true, bool shouldRegisterListeners = true]) {
+    Completer<VideoRoomPublisher> completer = new Completer();
+    VideoRoomPublisher pub;
+    session.videoRoomPlugin
+        .createPublisherHandle(room)
+        .then((VideoRoomPublisher pH) => pub = pH)
+        .then((_) => pub.joinPublisher({'room':room}))
+        .then((res) => {
+          if (res['response'].getData()['publishers'] != null && shouldCreateListeners) {
+            createListeners(res['response'].getData()['publishers'])
+          }})
+        .then((_) => {
+          if(shouldRegisterListeners) {
+            registerEvents(pub)
+          }})
+        .then((_) => completer.complete(pub));
+    return completer.future;
   }
 
   void createListeners(List publishers) {
@@ -239,26 +249,34 @@ class JanusVideoRoom with ChangeNotifier {
       //print('publisher to listen to: $publisher');
       session.videoRoomPlugin
           .listenFeed(room, publisher['id'])
-          .then((listen) => {
-                //print('created listener handle'),
-                subscriptions[publisher['id']] = listen,
-                listen.pc().then((pc) => {
-                      pc.onTrack = (track) =>
-                          addRemote(publisher['id'], track.streams[0]),
-                      listen.setRemoteAnswer()
-                    })
-              });
+          .then((listen) =>
+      {
+        //print('created listener handle'),
+        subscriptions[publisher['id']] = listen,
+        listen.pc().then((pc) =>
+        {
+          pc.onTrack = (track) =>
+              addRemote(publisher['id'], track.streams[0]),
+          listen.setRemoteAnswer()
+        })
+      });
     }
   }
 
-  Future<void> start(MediaStream localStream) {
-    //if local is null then should just create publisher with audio and video false? (if not then populate basic)
-    //can configure to add video later?
-    return janus
-        .createSession()
-        .then((session) => this.session = session)
-        .then((_) => publishOwnFeed(localStream))
-        .then((value) => registerEvents(this.publisher));
+  //TODO: Can do this with a leave command and then a seperate joinAndConfigure?
+  //Saves destroying/recreating another publisher?
+  Future<void> switchRoom(int room) {
+    print("Switching to room: $room");
+    return session.videoRoomPlugin.destroyHandle(publisher)
+        .then((_) => {
+          this.publisher = null,
+          this.remotes.clear(),
+          this.subscriptions.clear(),
+          notifyListeners(),
+          this.room = room
+        })
+        .then((_) => _publish ? publishStream(session, localStream) : listenRoom(session))
+        .then((pub) => this.publisher = pub);
   }
 
   void close() {

@@ -134,7 +134,6 @@ class VideoRoomHandle extends PluginHandle {
   Future<Map> joinPublisher(Map<String, dynamic> options) {
     assert(options['room'] != null);
     options['ptype'] = 'publisher';
-    //options['display'] = 'testname';
     return this.join(options);
   }
 

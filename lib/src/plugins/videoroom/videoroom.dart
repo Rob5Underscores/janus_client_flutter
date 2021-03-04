@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:janus_client_flutter/src/plugins/plugin.dart';
 import 'package:janus_client_flutter/src/plugins/videoroom/handle.dart';
 import 'package:janus_client_flutter/src/plugins/videoroom/listener.dart';
@@ -36,7 +35,7 @@ class VideoRoomPlugin extends JanusPlugin {
     this.createVideoRoomHandle(opaqueId).then((handle) => {
       this.$defaultHandle = handle,
       completer.complete(handle)
-    }).catchError((err) => completer.completeError(err));
+    }).catchError(completer.completeError);
     
     return completer.future;
   }

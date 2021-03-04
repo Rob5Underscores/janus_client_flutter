@@ -76,7 +76,7 @@ class PluginHandle {
       case 'webrtcup': if(onWebrtcUp != null) onWebrtcUp(event); break;
       case 'media': if(onMedia != null) onMedia(event); break;
       case 'hangup': if(onHangup != null) onHangup(event); break;
-      case 'slowlink': if(onSlowlink != null) onSlowlink(event); break;
+      case 'slowlink': if(onSlowlink != null) onSlowlink(); break;
       case 'detached': if(onDetached != null) onDetached(event); break;
       case 'event': if(onEvent != null) onEvent(event); break;
       case 'trickle': if(onTrickle != null) onTrickle(event); break;

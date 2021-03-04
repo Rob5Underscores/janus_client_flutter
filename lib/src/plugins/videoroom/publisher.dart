@@ -61,8 +61,7 @@ class VideoRoomPublisher extends VideoRoomHandle {
             //print('publish res: $res'),
             //print('publisher here 2'),
             this.publisherId = res['id'],
-            this.desc = new RTCSessionDescription(
-            res['jsep']['sdp'], res['jsep']['type']),
+            this.desc = new RTCSessionDescription(res['jsep']['sdp'], res['jsep']['type']),
             result = res
           }).then((_) => peer.setRemoteDescription(desc))
               .then((_) => completer.complete(result))
