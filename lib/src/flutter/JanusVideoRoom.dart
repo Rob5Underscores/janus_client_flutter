@@ -61,6 +61,7 @@ class JanusVideoRoom with ChangeNotifier {
     localStream.getAudioTracks().forEach((track) {
       track.enabled = !isMuted;
     });
+    notifyListeners();
   }
 
   Future<void> setLocalStream() {
@@ -75,6 +76,7 @@ class JanusVideoRoom with ChangeNotifier {
     isFlipped = !isFlipped;
     if (localStream != null)
       Helper.switchCamera(localStream.getVideoTracks()[0]);
+    notifyListeners();
   }
 
   void toggleCamera() {
@@ -91,14 +93,14 @@ class JanusVideoRoom with ChangeNotifier {
           .destroyHandle(this.screenSharePublisher)
           .then((_) => this.screenSharePublisher = null)
           .then((_) =>
-              {this.displayMediaStream.dispose(), isSharingScreen = false});
+              {this.displayMediaStream.dispose(), isSharingScreen = false, notifyListeners()});
     } else {
       return navigator.mediaDevices
           .getDisplayMedia({'audio': !isMuted, 'video': !isCameraOff})
           .then((ms) => this.displayMediaStream = ms)
           .then((_) => publishStream(session, this.displayMediaStream, false, false))
           .then((pub) => this.screenSharePublisher = pub)
-          .then((_) => isSharingScreen = true);
+          .then((_) => {isSharingScreen = true, notifyListeners()});
     }
   }
 

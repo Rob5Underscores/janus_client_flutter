@@ -15,8 +15,9 @@ dependencies:
   web_socket_channel: ^1.1.0
   http: ^0.12.2
   flutter_webrtc: #^0.5.8
-    git:
-      url: https://github.com/flutter-webrtc/flutter-webrtc.git
+    #git:
+    #  url: https://github.com/flutter-webrtc/flutter-webrtc.git
+    path: ../flutter-webrtc
 
 dev_dependencies:
   flutter_test:
