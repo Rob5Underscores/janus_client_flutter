@@ -47,7 +47,7 @@ class VideoRoomPlugin extends JanusPlugin {
       vH = new VideoRoomHandle(id, this),
       this.addHandle(vH),
       completer.complete(vH)
-    }).catchError((err) => completer.completeError(err));
+    }).catchError(completer.completeError);
     return completer.future;
   }
 

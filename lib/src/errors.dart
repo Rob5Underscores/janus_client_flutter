@@ -47,15 +47,17 @@ class ResponseError extends JanusError {
 
   ResponseError({this.response}) {
     print('error resp: ${this.response.getResponse}');
-    this.code = response.getResponse['error_code'];
-    this.message  = response.getResponse['error'];
+    this.code = response.getResponse['error']['code'];
+    this.message  = response.getResponse['error']['reason'];
   }
 }
 
-class PluginError extends ResponseError {
+class PluginError extends JanusError {
+
+  int code;
   PluginHandle handle;
 
-  PluginError({ClientResponse response, this.handle}):super(response: response) {
+  PluginError({ClientResponse response, this.handle}) {
     this.message = response.getResponse['plugindata']['data']['error'];
     this.code = response.getResponse['plugindata']['data']['error_code'];
   }

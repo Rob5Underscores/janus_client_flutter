@@ -57,7 +57,7 @@ class Transaction {
       this.transactionState = TransactionState.receiving;
       if(response.isError()) {
         this.stopTimeout();
-        print('resp err: ${response.response}');
+        //print('resp err: ${response.response}');
         onError(new ResponseError(response: response));
       } else if(this.ack == true && response.isAck()) {
         this.ackReceived = true;

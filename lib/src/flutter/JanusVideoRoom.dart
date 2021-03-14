@@ -25,6 +25,7 @@ class JanusVideoRoom with ChangeNotifier {
   VideoRoomPublisher publisher, screenSharePublisher;
 
   bool isSetup = false,
+      isStarted = false,
       isMuted = false,
       isCameraOff = false,
       isFlipped = false,
@@ -34,21 +35,36 @@ class JanusVideoRoom with ChangeNotifier {
 
   JanusVideoRoom({this.janus});
 
-  Future<bool> setup([bool publish = true]) {
+  Future<bool> setup() {
+
+    if (isSetup) return Future.value(true);
+    this.isSetup = true;
+
+    return janus.connect()
+        .then((_) => janus.createSession())
+        .then((session) => this.session = session)
+        .then((_) => Future.value(true))
+        .catchError((err) => this.isSetup = false);
+  }
+
+  Future<bool> start([bool publish = true]) {
+    if (isStarted) return Future.value(true);
+    this.isStarted = true;
     if(publish != null) {
       this._publish = publish;
     }
-    if (isSetup) return Future.value(true);
-    this.isSetup = true;
-    return setLocalStream()
-        //returns true of already connected
-        .then((_) => janus.connect())
-        .then((_) => janus.createSession())
-        .then((session) => this.session = session)
+    return (_publish ? setLocalStream() : Future.value(true))
         .then((_) => _publish ? publishStream(session, localStream) : listenRoom(session))
         .then((pub) => this.publisher = pub)
-        .then((_) => this.isSetup = true)
         .then((_) => Future.value(true));
+  }
+
+  Future<void> stop() {
+    return publisher.leave({}).then((_) => {
+      this.subscriptions.clear(),
+      this.remotes.clear(),
+      this.isStarted = false
+    });
   }
 
   //this is the output of this class
@@ -202,8 +218,7 @@ class JanusVideoRoom with ChangeNotifier {
       [bool shouldCreateListeners = true, bool shouldRegisterListeners = true]) {
     Completer<VideoRoomPublisher> completer = new Completer();
     VideoRoomPublisher pub;
-    session.videoRoomPlugin
-        .createPublisherHandle(room)
+    session.videoRoomPlugin.createPublisherHandle(room)
         .then((VideoRoomPublisher pH) => pub = pH)
         .then((_) => pub.addLocalMedia(mediaStream))
         .then((_) => pub.createAnswer())
@@ -268,6 +283,7 @@ class JanusVideoRoom with ChangeNotifier {
   //TODO: Can do this with a leave command and then a seperate joinAndConfigure?
   //Saves destroying/recreating another publisher?
   Future<void> switchRoom(int room) {
+    if(room == this.room) return Future.value();
     print("Switching to room: $room");
     return session.videoRoomPlugin.destroyHandle(publisher)
         .then((_) => {
@@ -280,6 +296,7 @@ class JanusVideoRoom with ChangeNotifier {
         .then((_) => _publish ? publishStream(session, localStream) : listenRoom(session))
         .then((pub) => this.publisher = pub);
   }
+
 
   void close() {
     if (localStream != null) localStream.dispose();
